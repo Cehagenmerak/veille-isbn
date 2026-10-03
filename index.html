@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1f4e79">
+  <title>Veille ISBN</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Veille ISBN</h1>
+    <span id="compteur"></span>
+    <button id="btn-reglages" aria-label="Réglages">⚙️</button>
+  </header>
+
+  <main>
+    <div class="actions">
+      <button id="btn-scan" class="primaire">📷 Scanner un ISBN</button>
+      <button id="btn-manuel">✏️ Saisir sans code</button>
+    </div>
+    <ul id="liste"></ul>
+    <p id="vide" class="vide" hidden>Aucun livre pour l'instant.</p>
+  </main>
+
+  <footer>
+    <button id="btn-envoyer" class="primaire">✉️ Envoyer la liste</button>
+    <button id="btn-csv">Exporter CSV</button>
+  </footer>
+
+  <!-- Scanner plein écran -->
+  <div id="scanner" hidden>
+    <video id="video" playsinline muted></video>
+    <div class="viseur"></div>
+    <p id="scan-msg">Cadrez le code-barres du livre</p>
+    <div class="scan-actions">
+      <button id="btn-isbn-clavier">Taper l'ISBN</button>
+      <button id="btn-scan-annuler">Annuler</button>
+    </div>
+  </div>
+
+  <!-- Formulaire d'ajout / modification -->
+  <dialog id="dlg">
+    <form id="form" method="dialog">
+      <h2 id="dlg-titre"></h2>
+      <label>ISBN
+        <input id="f-isbn" inputmode="numeric" autocomplete="off" placeholder="978… (facultatif)">
+      </label>
+      <div id="champs"></div>
+      <p id="dlg-erreur" class="erreur" hidden></p>
+      <div class="dlg-actions">
+        <button type="button" id="btn-suppr" class="danger">Supprimer</button>
+        <button type="button" id="btn-annuler">Annuler</button>
+        <button type="submit" class="primaire">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" role="status" hidden></div>
+
+  <script src="vendor/zxing.min.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
