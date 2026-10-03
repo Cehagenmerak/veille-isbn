@@ -51,6 +51,8 @@ li .m { color: var(--discret); font-size: .9rem; }
 .viseur { position: relative; width: 80%; max-width: 360px; aspect-ratio: 3 / 2; border: 3px solid #fff; border-radius: 14px; box-shadow: 0 0 0 100vmax rgba(0,0,0,.5); }
 #scan-msg { position: relative; margin-top: 20px; text-shadow: 0 1px 4px #000; text-align: center; padding: 0 16px; }
 .scan-actions { position: absolute; bottom: calc(24px + env(safe-area-inset-bottom)); display: flex; gap: 10px; }
+#zoom { position: absolute; bottom: calc(90px + env(safe-area-inset-bottom)); width: 70%; max-width: 360px; }
+.scan-actions { flex-wrap: wrap; justify-content: center; width: 94%; }
 .scan-actions button { background: rgba(0,0,0,.6); color: #fff; border-color: #fff; }
 
 /* Formulaire */

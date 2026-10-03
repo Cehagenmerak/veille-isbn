@@ -35,10 +35,14 @@
     <video id="video" playsinline muted></video>
     <div class="viseur"></div>
     <p id="scan-msg">Cadrez le code-barres du livre</p>
+    <input id="zoom" type="range" hidden aria-label="Zoom">
     <div class="scan-actions">
+      <button id="btn-torche" hidden>🔦</button>
+      <button id="btn-photo">📸 Photo</button>
       <button id="btn-isbn-clavier">Taper l'ISBN</button>
       <button id="btn-scan-annuler">Annuler</button>
     </div>
+    <input id="fichier-photo" type="file" accept="image/*" capture="environment" hidden>
   </div>
 
   <!-- Formulaire d'ajout / modification -->

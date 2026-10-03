@@ -164,8 +164,6 @@ $("btn-suppr").addEventListener("click", () => {
 
 // ---------- Scanner ----------
 
-let controles = null;
-let lecteur = null;
 
 function bip() {
   if (navigator.vibrate) navigator.vibrate(80);
@@ -179,45 +177,193 @@ function bip() {
   } catch {}
 }
 
-async function demarrerScan() {
-  $("scanner").hidden = false;
-  $("scan-msg").textContent = "Cadrez le code-barres du livre";
-  try {
-    const hints = new Map();
-    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.EAN_13]);
-    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-    lecteur = new ZXing.BrowserMultiFormatReader(hints);
-    controles = await lecteur.decodeFromConstraints(
-      { video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } },
-      $("video"),
-      (resultat) => {
-        if (!resultat) return;
-        const isbn = resultat.getText();
-        if (!isbnValide(isbn)) return; // EAN qui n'est pas un ISBN (prix, autre produit) : on ignore
-        arreterScan();
-        bip();
-        const existant = livres.find((l) => l.isbn === isbn);
-        if (existant) {
-          toast("Déjà dans la liste");
-          ouvrirFormulaire(existant);
-        } else {
-          ouvrirFormulaire(null, isbn);
-        }
-      }
-    );
-  } catch (e) {
-    arreterScan();
-    const refuse = e && (e.name === "NotAllowedError" || e.name === "SecurityError");
-    toast(refuse ? "Accès à la caméra refusé : vérifiez l'autorisation du site." : "Caméra indisponible.");
+const MSG_SCAN = "Cadrez le code-barres du livre";
+const MSG_CONSEILS =
+  "Pas de lecture : reculez à 15-20 cm, évitez les reflets, éclairez (🔦) ou utilisez « 📸 Photo ».";
+let minuterieConseils = null;
+let derniereAlerte = 0;
+let torcheAllumee = false;
+
+function piste() {
+  const flux = $("video").srcObject;
+  return flux && flux.getVideoTracks()[0];
+}
+
+// Réglages caméra facultatifs : torche et zoom, si le téléphone les propose.
+function preparerReglagesCamera() {
+  const t = piste();
+  const caps = t && t.getCapabilities ? t.getCapabilities() : {};
+  $("btn-torche").hidden = !caps.torch;
+  const zoom = $("zoom");
+  zoom.hidden = !caps.zoom;
+  if (caps.zoom) {
+    zoom.min = caps.zoom.min;
+    zoom.max = caps.zoom.max;
+    zoom.step = caps.zoom.step || 0.1;
+    zoom.value = caps.zoom.min;
   }
 }
 
+$("btn-torche").addEventListener("click", () => {
+  const t = piste();
+  if (!t) return;
+  torcheAllumee = !torcheAllumee;
+  const allume = torcheAllumee;
+  t.applyConstraints({ advanced: [{ torch: allume }] }).catch(() => {});
+});
+
+$("zoom").addEventListener("input", (e) => {
+  const t = piste();
+  if (t) t.applyConstraints({ advanced: [{ zoom: +e.target.value }] }).catch(() => {});
+});
+
+function resultatLu(isbn) {
+  if (!isbnValide(isbn)) {
+    // Code lu mais qui n'est pas un ISBN : on le dit (utile pour comprendre), sans bloquer.
+    const maintenant = Date.now();
+    if (maintenant - derniereAlerte > 2000) {
+      derniereAlerte = maintenant;
+      $("scan-msg").textContent = `Code lu (${isbn}) mais ce n'est pas un ISBN (978/979).`;
+    }
+    return false;
+  }
+  bip();
+  const existant = livres.find((l) => l.isbn === isbn);
+  if (existant) {
+    toast("Déjà dans la liste");
+    ouvrirFormulaire(existant);
+  } else {
+    ouvrirFormulaire(null, isbn);
+  }
+  return true;
+}
+
+// Lecture d'une image (canvas). On n'utilise pas la boucle vidéo de la bibliothèque :
+// elle n'arrêtait pas la caméra et alternait des images inversées inutiles.
+const lecteurEan = new ZXing.MultiFormatReader();
+const indicesLecture = new Map([
+  [ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.EAN_13]],
+  [ZXing.DecodeHintType.TRY_HARDER, true],
+]);
+
+function lireCanvas(canvas) {
+  try {
+    const source = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+    return lecteurEan.decode(new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(source)), indicesLecture).getText();
+  } catch {
+    return null;
+  }
+}
+
+let flux = null;
+let boucle = null;
+
+async function demarrerScan() {
+  $("scanner").hidden = false;
+  $("scan-msg").textContent = MSG_SCAN;
+  clearTimeout(minuterieConseils);
+  minuterieConseils = setTimeout(() => ($("scan-msg").textContent = MSG_CONSEILS), 10000);
+  try {
+    flux = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: {
+        facingMode: { ideal: "environment" },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+        advanced: [{ focusMode: "continuous" }],
+      },
+    });
+    const video = $("video");
+    video.srcObject = flux;
+    await video.play();
+    preparerReglagesCamera();
+  } catch (e) {
+    arreterScan();
+    const refuse = e && (e.name === "NotAllowedError" || e.name === "SecurityError");
+    toast(refuse ? "Accès à la caméra refusé : vérifiez l'autorisation du site." : "Caméra indisponible : essayez « Photo ».");
+    return;
+  }
+
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  let passe = 0;
+  const essai = () => {
+    if (!flux) return;
+    const v = $("video");
+    if (v.videoWidth) {
+      let texte;
+      if (passe++ % 2 === 0) {
+        // Image entière, réduite pour aller vite.
+        const k = Math.min(1, 1280 / v.videoWidth);
+        canvas.width = Math.round(v.videoWidth * k);
+        canvas.height = Math.round(v.videoHeight * k);
+        ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+      } else {
+        // Zone centrale (celle du viseur) en pleine résolution : plus de détail pour un code éloigné.
+        const w = Math.round(v.videoWidth * 0.7);
+        const h = Math.round(v.videoHeight * 0.5);
+        canvas.width = w;
+        canvas.height = h;
+        ctx.drawImage(v, (v.videoWidth - w) / 2, (v.videoHeight - h) / 2, w, h, 0, 0, w, h);
+      }
+      texte = lireCanvas(canvas);
+      if (texte) {
+        if (isbnValide(texte)) {
+          arreterScan();
+          resultatLu(texte);
+          return;
+        }
+        resultatLu(texte); // affiche « pas un ISBN »
+      }
+    }
+    boucle = setTimeout(essai, 60);
+  };
+  essai();
+}
+
 function arreterScan() {
-  if (controles) controles.stop();
-  controles = null;
-  lecteur = null;
+  clearTimeout(minuterieConseils);
+  clearTimeout(boucle);
+  if (flux) flux.getTracks().forEach((t) => t.stop());
+  flux = null;
+  $("video").srcObject = null;
+  torcheAllumee = false;
   $("scanner").hidden = true;
 }
+
+// Plan B : photo prise avec l'application appareil photo du téléphone (vraie mise au point),
+// puis lecture du code sur l'image.
+async function lirePhoto(fichier) {
+  const bmp = await createImageBitmap(fichier);
+  // Essais à plusieurs tailles : la lecture est parfois meilleure en réduisant l'image.
+  for (const largeurMax of [2000, 1280, 800]) {
+    const k = Math.min(1, largeurMax / Math.max(bmp.width, bmp.height));
+    const c = document.createElement("canvas");
+    c.width = Math.round(bmp.width * k);
+    c.height = Math.round(bmp.height * k);
+    c.getContext("2d", { willReadFrequently: true }).drawImage(bmp, 0, 0, c.width, c.height);
+    const texte = lireCanvas(c);
+    if (texte) return texte;
+  }
+  return null;
+}
+
+$("btn-photo").addEventListener("click", () => $("fichier-photo").click());
+$("fichier-photo").addEventListener("change", async (e) => {
+  const fichier = e.target.files[0];
+  e.target.value = "";
+  if (!fichier) return;
+  $("scan-msg").textContent = "Lecture de la photo…";
+  const isbn = await lirePhoto(fichier);
+  if (isbn && isbnValide(isbn)) {
+    arreterScan();
+    resultatLu(isbn);
+  } else {
+    $("scan-msg").textContent = isbn
+      ? `Code lu (${isbn}) mais ce n'est pas un ISBN (978/979).`
+      : "Aucun code lu sur la photo : rapprochez-vous, code bien net et à plat.";
+  }
+});
 
 $("btn-scan").addEventListener("click", demarrerScan);
 $("btn-scan-annuler").addEventListener("click", arreterScan);
