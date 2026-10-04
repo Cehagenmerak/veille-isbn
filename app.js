@@ -687,11 +687,23 @@ function vueEnvoi(f) {
   } else {
     h += `<div class="apercu-texte">${esc(corpsTexte(eff))}</div><div class="poids">Texte ≈ ${formaterPoids(new Blob([corpsTexte(eff)]).size)} · sans photo</div>`;
   }
+  if (html && !partageFichiers()) {
+    h += `<div class="note">Ce navigateur ne sait pas joindre un fichier au mail : le tableau sera enregistré dans Téléchargements, à joindre à la main.</div>`;
+  }
   const bloque = f.fonds === "checking" || !n || (html && !f.document);
   h += `<button class="btn btn-pri" data-a="partager" ${bloque ? "disabled" : ""}>${
-    f.fonds === "checking" ? "Vérification…" : html && !f.document && n ? "Préparation…" : `Partager vers le mail (${n})`
+    f.fonds === "checking" ? "Vérification…" : html && !f.document && n ? "Préparation…" : html && !partageFichiers() ? `Enregistrer et ouvrir le mail (${n})` : `Partager vers le mail (${n})`
   }</button>`;
   return h;
+}
+
+// Le navigateur sait-il passer un fichier à la messagerie (partage Android) ?
+function partageFichiers() {
+  try {
+    return !!(navigator.canShare && navigator.canShare({ files: [new File(["x"], "t.html", { type: "text/html" })] }));
+  } catch {
+    return false;
+  }
 }
 
 // Prépare le fichier HTML à l'avance : le partage doit partir directement du toucher.

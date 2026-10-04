@@ -363,6 +363,40 @@ function corpsTexte(livres) {
   return `Bonjour,\n\nVoici ${n} titre${pl(n)} repéré${pl(n)} pour les acquisitions :\n\n${lignes.join("\n")}\n`;
 }
 
+// ---------- Code-barres EAN-13 (SVG, imprimable et lisible par une douchette) ----------
+
+const EAN_L = ["0001101", "0011001", "0010011", "0111101", "0100011", "0110001", "0101111", "0111011", "0110111", "0001011"];
+const EAN_G = ["0100111", "0110011", "0011011", "0100001", "0011101", "0111001", "0000101", "0010001", "0001001", "0010111"];
+const EAN_R = ["1110010", "1100110", "1101100", "1000010", "1011100", "1001110", "1010000", "1000100", "1001000", "1110100"];
+const EAN_PARITE = ["LLLLLL", "LLGLGG", "LLGGLG", "LLGGGL", "LGLLGG", "LGGLLG", "LGGGLL", "LGLGLG", "LGLGGL", "LGGLGL"];
+
+// Taille d'impression nominale : 95 modules de 0,33 mm (+ marges blanches), soit environ 37 mm de large.
+function codeBarresSvg(isbn) {
+  if (!isbnValide(isbn)) return "";
+  const d = isbn.split("").map(Number);
+  const par = EAN_PARITE[d[0]];
+  let bits = "101";
+  for (let i = 1; i <= 6; i++) bits += (par[i - 1] === "L" ? EAN_L : EAN_G)[d[i]];
+  bits += "01010";
+  for (let i = 7; i <= 12; i++) bits += EAN_R[d[i]];
+  bits += "101";
+  const garde = (i) => i < 3 || (i >= 45 && i < 50) || i >= 92; // barres de garde, plus longues
+  const marge = 11, haut = 60, hautGarde = 65;
+  let barres = "";
+  for (let i = 0; i < bits.length; i++) {
+    if (bits[i] !== "1") continue;
+    let j = i;
+    while (j + 1 < bits.length && bits[j + 1] === "1" && garde(j + 1) === garde(i)) j++;
+    barres += `<rect x="${marge + i}" y="0" width="${j - i + 1}" height="${garde(i) ? hautGarde : haut}"/>`;
+    i = j;
+  }
+  const txt = (x, s, ancre = "middle") => `<text x="${x}" y="73" text-anchor="${ancre}">${s}</text>`;
+  const largeur = marge + 95 + 7;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${largeur} 76" width="${(largeur * 0.33).toFixed(1)}mm" height="${(76 * 0.33).toFixed(1)}mm" role="img" aria-label="Code-barres ${isbn}" style="background:#fff;display:block"><g fill="#000">${barres}</g><g font-family="monospace" font-size="10" fill="#000">${txt(
+    marge - 2, d[0], "end"
+  )}${txt(marge + 3 + 21, isbn.slice(1, 7))}${txt(marge + 50 + 21, isbn.slice(7))}</g></svg>`;
+}
+
 const COULEURS_PRIO_MAIL = { 1: ["#a9c4e6", "#14181d"], 2: ["#3f78b5", "#fff"], 3: ["#173f74", "#fff"] };
 
 // Tableau HTML autonome : photos intégrées (réduites), couvertures BnF en lien.
@@ -385,17 +419,19 @@ async function documentHtml(livres) {
 <b style="font-size:15px">${esc(l.fields.titre || "(titre à compléter)")}</b><br>
 <span style="color:#56606b">${esc(sousLigneMail(l))}</span><br>
 <span style="color:#56606b;font-family:monospace">${esc(l.isbn ? formaterIsbn(l.isbn) : "sans ISBN")}</span></td>
+<td style="padding:8px;border-bottom:1px solid #eceff2;vertical-align:top">${l.isbn ? codeBarresSvg(l.isbn) : ""}</td>
 <td style="padding:8px;border-bottom:1px solid #eceff2;vertical-align:top"><span style="display:inline-block;padding:3px 7px;border-radius:5px;background:${fond};color:${encre};font-size:12px;font-weight:600;white-space:nowrap">${PRIO[l.prio]}</span></td>
 </tr>`);
   }
   const credit = avecCouv
     ? `<p style="font-size:12px;color:#56606b">Couvertures : BnF, Catalogue général, récupérées le ${new Date().toLocaleDateString("fr-FR")}.</p>`
     : "";
-  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${esc(CONFIG.objetMail)}</title></head>
+  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${esc(CONFIG.objetMail)}</title>
+<style>@media print { tr { break-inside: avoid; } body { margin: 0 } }</style></head>
 <body style="font-family:Arial,sans-serif;color:#14181d;margin:16px">
 <p>Bonjour, voici ${n} titre${pl(n)} repéré${pl(n)} pour les acquisitions, classés par priorité.</p>
 <table style="border-collapse:collapse;width:100%;max-width:720px">
-<tr style="background:#eceff2;font-size:11px;text-transform:uppercase;color:#56606b"><th style="padding:6px 8px;text-align:left">Couv.</th><th style="padding:6px 8px;text-align:left">Livre</th><th style="padding:6px 8px;text-align:left">Priorité</th></tr>
+<tr style="background:#eceff2;font-size:11px;text-transform:uppercase;color:#56606b"><th style="padding:6px 8px;text-align:left">Couv.</th><th style="padding:6px 8px;text-align:left">Livre</th><th style="padding:6px 8px;text-align:left">Code-barres</th><th style="padding:6px 8px;text-align:left">Priorité</th></tr>
 ${lignes.join("\n")}
 </table>
 ${credit}
