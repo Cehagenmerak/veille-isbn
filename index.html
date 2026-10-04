@@ -2,71 +2,75 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#1f4e79">
   <title>Veille ISBN</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="preload" href="vendor/fonts/atkinson-next.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <h1>Veille ISBN</h1>
-    <span id="compteur"></span>
-    <button id="btn-reglages" aria-label="Réglages">⚙️</button>
-  </header>
+  <!-- Liste, fiche et réglages : construits par app.js -->
+  <div id="app"></div>
 
-  <main>
-    <div class="actions">
-      <button id="btn-scan" class="primaire">📷 Scanner un ISBN</button>
-      <button id="btn-manuel">✏️ Saisir sans code</button>
-    </div>
-    <ul id="liste"></ul>
-    <p id="vide" class="vide" hidden>Aucun livre pour l'instant.</p>
-  </main>
-
-  <footer>
-    <button id="btn-envoyer" class="primaire">✉️ Envoyer la liste</button>
-    <button id="btn-csv">Exporter CSV</button>
-  </footer>
-
-  <!-- Scanner plein écran -->
+  <!-- Scanner plein écran (gardé dans la page pour ne pas couper la vidéo à chaque mise à jour) -->
   <div id="scanner" hidden>
     <video id="video" playsinline muted></video>
-    <div class="viseur"></div>
-    <p id="scan-msg">Cadrez le code-barres du livre</p>
-    <input id="zoom" type="range" hidden aria-label="Zoom">
-    <div class="scan-actions">
-      <button id="btn-torche" hidden>🔦</button>
-      <button id="btn-photo">📸 Photo</button>
-      <button id="btn-isbn-clavier">Taper l'ISBN</button>
-      <button id="btn-scan-annuler">Annuler</button>
+    <div id="cadre-zone" class="cadre-zone">
+      <div id="cadre" class="cadre"></div>
+      <div id="ligne-visee" class="ligne-visee"></div>
+    </div>
+    <div id="pile-boites"></div>
+    <div id="flash" class="flash" hidden></div>
+
+    <div class="scan-haut">
+      <button id="btn-scan-fermer" class="scan-pastille">Annuler</button>
+      <div id="kilo-compteur" class="kilo-compteur" hidden>
+        <div id="kilo-n" class="kilo-n">0</div>
+        <div id="kilo-libelle" class="kilo-libelle">scanné</div>
+      </div>
+    </div>
+
+    <div class="scan-modes" role="tablist" aria-label="Mode de scan">
+      <button data-mode="unit" role="tab">Un livre</button>
+      <button data-mode="kilo" role="tab">Au kilomètre</button>
+      <button data-mode="pile" role="tab">En pile</button>
+    </div>
+
+    <div id="scan-aide" class="scan-aide"></div>
+
+    <div class="scan-bas">
+      <div id="scan-dernier" class="scan-dernier" hidden>
+        <div class="scan-dernier-txt">
+          <div id="dernier-libelle" class="dernier-libelle"></div>
+          <div id="dernier-isbn" class="mono dernier-isbn"></div>
+        </div>
+        <button id="btn-annuler-dernier" class="btn-contour-blanc">Annuler le dernier</button>
+      </div>
+      <div id="zoom-ligne" class="zoom-ligne" hidden>
+        <span class="zoom-lib">Zoom</span>
+        <input id="zoom" type="range" aria-label="Zoom">
+        <span id="zoom-val" class="mono zoom-val">×1</span>
+      </div>
+      <div class="scan-outils">
+        <button id="btn-torche" class="scan-outil">Torche</button>
+        <button id="btn-photo" class="scan-outil">Photo</button>
+        <button id="btn-isbn-clavier" class="scan-outil">Taper l'ISBN</button>
+      </div>
+      <button id="btn-kilo-terminer" class="btn-terminer" hidden></button>
     </div>
     <input id="fichier-photo" type="file" accept="image/*" capture="environment" hidden>
   </div>
 
-  <!-- Formulaire d'ajout / modification -->
-  <dialog id="dlg">
-    <form id="form" method="dialog">
-      <h2 id="dlg-titre"></h2>
-      <label>ISBN
-        <input id="f-isbn" inputmode="numeric" autocomplete="off" placeholder="978… (facultatif)">
-      </label>
-      <div id="champs"></div>
-      <p id="dlg-erreur" class="erreur" hidden></p>
-      <div class="dlg-actions">
-        <button type="button" id="btn-suppr" class="danger">Supprimer</button>
-        <button type="button" id="btn-annuler">Annuler</button>
-        <button type="submit" class="primaire">Enregistrer</button>
-      </div>
-    </form>
-  </dialog>
-
+  <div id="feuille"></div>
   <div id="toast" role="status" hidden></div>
 
   <script src="vendor/zxing.min.js"></script>
   <script src="config.js"></script>
+  <script src="services.js"></script>
+  <script src="scan.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
