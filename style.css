@@ -102,7 +102,11 @@ button:disabled { cursor: default; }
 .compteur-l { font-size: 16px; }
 .compteur-t { font-size: 15px; opacity: .75; }
 .actions { padding: 14px 16px 6px; display: flex; flex-direction: column; gap: 10px; }
-.btn-scanner { min-height: 60px; border: 0; border-radius: 14px; background: var(--pri); color: #fff; font-size: 19px; font-weight: 700; }
+.modes-scan { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.mode-scan { min-height: 64px; padding: 0 4px; border: 2px solid var(--pri); border-radius: 14px; background: var(--surface); color: var(--pri-ink); font-size: 16px; font-weight: 700; line-height: 1.15; }
+.mode-scan span { display: block; font-size: 12px; font-weight: 400; }
+.mode-scan.principal { border: 0; background: var(--pri); color: #fff; }
+.mode-scan.principal span { opacity: .85; }
 .btn-manuel { min-height: 48px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font-size: 16px; font-weight: 600; }
 
 .entete-sel { background: var(--surface); border-bottom: 1px solid var(--line); padding: calc(10px + env(safe-area-inset-top)) 8px 8px; display: flex; align-items: center; gap: 4px; }
@@ -293,9 +297,6 @@ select.champ-saisie { padding: 0 12px; }
 .kilo-compteur { padding: 6px 14px; border-radius: 12px; background: rgba(0,0,0,.55); text-align: right; line-height: 1.05; }
 .kilo-n { font-size: 30px; font-weight: 700; }
 .kilo-libelle { font-size: 12px; opacity: .8; }
-.scan-modes { position: absolute; top: calc(72px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; padding: 4px; border-radius: 14px; background: rgba(0,0,0,.6); gap: 4px; }
-.scan-modes button { min-height: 44px; padding: 0 12px; border: 0; border-radius: 10px; font-size: 15px; font-weight: 700; background: transparent; color: #fff; white-space: nowrap; }
-.scan-modes button.on { background: #fff; color: #1f4e79; }
 .scan-aide { position: absolute; left: 0; right: 0; top: 55%; text-align: center; font-size: 15px; padding: 0 30px; text-shadow: 0 1px 3px #000; }
 #scanner.pile .scan-aide { top: 58%; }
 .scan-bas { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 14px calc(18px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px; background: linear-gradient(transparent, rgba(0,0,0,.85) 22%); }

@@ -1,6 +1,6 @@
 // Cache de l'application pour qu'elle fonctionne hors ligne.
 // Changer VERSION à chaque modification des fichiers pour forcer la mise à jour.
-const VERSION = "v5";
+const VERSION = "v6";
 const CACHE = "veille-isbn-" + VERSION;
 const FICHIERS = [
   "./",

@@ -161,7 +161,11 @@ function vueListe() {
       <div class="compteur"><span class="compteur-n">${nonEnvoyes.length}</span><span class="compteur-l">à envoyer</span><span class="compteur-t">/ ${tous.length} au total</span></div>
     </div>
     <div class="actions">
-      <button class="btn-scanner" data-a="scanner">Scanner un ISBN</button>
+      <div class="modes-scan">
+        <button class="mode-scan principal" data-a="scanner">Un livre<span>scan unitaire</span></button>
+        <button class="mode-scan" data-a="scannerKilo">Au kilomètre<span>en série</span></button>
+        <button class="mode-scan" data-a="scannerPile">En pile<span>plusieurs codes</span></button>
+      </div>
       <button class="btn-manuel" data-a="manuel">Saisir sans code-barres</button>
     </div>`;
   } else {
@@ -1065,7 +1069,6 @@ function flash(genre, texte) {
 function majScan() {
   const kilo = S.mode === "kilo";
   $("scanner").classList.toggle("pile", S.mode === "pile");
-  for (const b of document.querySelectorAll(".scan-modes button")) b.classList.toggle("on", b.dataset.mode === S.mode);
   if (Date.now() > S.messageJusqua) $("scan-aide").textContent = AIDES[S.mode];
   $("btn-scan-fermer").textContent = kilo ? "Terminer" : "Annuler";
   $("kilo-compteur").hidden = !kilo;
@@ -1100,16 +1103,6 @@ function fermerScan(silencieux) {
 
 $("btn-scan-fermer").addEventListener("click", () => fermerScan());
 $("btn-kilo-terminer").addEventListener("click", () => fermerScan());
-for (const b of document.querySelectorAll(".scan-modes button")) {
-  b.addEventListener("click", () => {
-    S.mode = b.dataset.mode;
-    S.kiloN = 0;
-    S.dernier = null;
-    S.dernierLu = null;
-    viderPile();
-    majScan();
-  });
-}
 $("btn-annuler-dernier").addEventListener("click", () => {
   const id = S.dernier && S.dernier.id;
   if (!id) return;
@@ -1193,6 +1186,8 @@ const ACTIONS = {
   reglages: () => ((E.ecran = "reglages"), (E.pmbEtat = "idle")),
   liste: () => (E.ecran = "liste"),
   scanner: () => ouvrirScan("unit"),
+  scannerKilo: () => ouvrirScan("kilo"),
+  scannerPile: () => ouvrirScan("pile"),
   manuel: () => {
     const l = nouveauLivre("", { draft: true, manual: true });
     livres.push(l);
