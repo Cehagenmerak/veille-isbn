@@ -1484,4 +1484,21 @@ appliquerTheme();
 sauver(); // enregistre la conversion depuis la première version, le cas échéant
 render();
 
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
+if ("serviceWorker" in navigator) {
+  // Une nouvelle version vient de s'installer : on recharge pour l'afficher tout de suite
+  // (pas au tout premier lancement, ni en plein scan ou en pleine saisie).
+  const avaitVersion = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!avaitVersion || recharge.fait) return;
+    recharge();
+  });
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" });
+}
+
+function recharge() {
+  if (!$("scanner").hidden || E.ecran === "fiche" || E.feuille) {
+    return void setTimeout(recharge, 3000);
+  }
+  recharge.fait = true;
+  location.reload();
+}

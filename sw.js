@@ -1,6 +1,6 @@
 // Cache de l'application pour qu'elle fonctionne hors ligne.
 // Changer VERSION à chaque modification des fichiers pour forcer la mise à jour.
-const VERSION = "v6";
+const VERSION = "v7";
 const CACHE = "veille-isbn-" + VERSION;
 const FICHIERS = [
   "./",
@@ -19,7 +19,10 @@ const FICHIERS = [
 ];
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FICHIERS)).then(() => self.skipWaiting()));
+  // cache: "reload" : on va chercher les fichiers sur le serveur, pas dans le cache du navigateur
+  // (GitHub Pages le garde 10 min, ce qui pouvait figer l'ancienne version dans la nouvelle).
+  const frais = FICHIERS.map((f) => new Request(f, { cache: "reload" }));
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(frais)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", (e) => {
