@@ -84,16 +84,27 @@ function convertirAnciens(anciens) {
   });
 }
 
+const CLE_IMPORTES = "veille-isbn:importes"; // livres de la première version déjà repris
+
+// Reprend, à chaque ouverture, les livres de la première version pas encore repris
+// (utile si l'on revient un temps à l'ancienne version). Un livre repris puis supprimé ne revient pas.
 function chargerLivres() {
+  let livres = [];
   try {
     const v = JSON.parse(localStorage.getItem(CLE_LIVRES));
-    if (Array.isArray(v)) return v.map((l) => (l.bnf === "loading" ? { ...l, bnf: "none" } : l));
+    if (Array.isArray(v)) livres = v.map((l) => (l.bnf === "loading" ? { ...l, bnf: "none" } : l));
   } catch {}
   try {
-    const anciens = JSON.parse(localStorage.getItem(CLE_ANCIENS));
-    if (Array.isArray(anciens) && anciens.length) return convertirAnciens(anciens);
+    const anciens = JSON.parse(localStorage.getItem(CLE_ANCIENS)) || [];
+    const importes = new Set(JSON.parse(localStorage.getItem(CLE_IMPORTES)) || []);
+    const ids = new Set(livres.map((l) => l.id));
+    const isbns = new Set(livres.map((l) => l.isbn).filter(Boolean));
+    const nouveaux = anciens.filter((a) => !importes.has(a.id) && !ids.has(a.id) && !(a.isbn && isbns.has(a.isbn)));
+    livres.push(...convertirAnciens(nouveaux));
+    for (const a of anciens) importes.add(a.id);
+    localStorage.setItem(CLE_IMPORTES, JSON.stringify([...importes]));
   } catch {}
-  return [];
+  return livres;
 }
 
 function sauverLivres(livres) {
